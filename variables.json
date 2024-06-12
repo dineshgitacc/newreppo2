@@ -1,0 +1,27 @@
+{
+  "CLUSTER_LOGS_INFO": {
+    "app_name": "Airflow",
+    "env": "DEV",
+    "host": "dev.opexwise.ai",
+    "job_creation_url": "http://10.10.50.13:8084",
+    "log_creation_url": "http://10.10.50.13:9001",
+    "opexwise_api_host": "http://10.10.10.162:8002"
+  },
+  "TEXT_ANALYSIS_INFO": {
+    "principle_mapping_id": 212,
+    "data_mode": "External Data"
+  },
+  "OPEXWISE_DATA_PIPE_UPDATE_REFERENCE_URL": "http://10.10.10.162:8002/datapipe/update/reference",
+  "SUPERSET_CONFIG": {
+    "api_version": "/api/v1",
+    "host": "http://dev.opexwise.ai:8088",
+    "provider": "db",
+    "username": "admin",
+    "password": "admin",
+    "database": 2,
+    "owners": [
+      1
+    ],
+    "schema": "analysis"
+  }
+}
