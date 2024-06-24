@@ -30,7 +30,8 @@ class DatabricksoauthConnection:
                 
 
                 if flag:
-                    if response.code == 200:
+                    if response.status_code == 200:
+                        # self.save_response_to_file(response.json())
                         return (True,"Connection successfully established")
                     
                     else:
@@ -45,11 +46,11 @@ class DatabricksoauthConnection:
 
     def make_connection(self,param):
         try:
-            # param=param
 
             databricks="https://dbc-df1b446c-aa5f.cloud.databricks.com/"
-
+            
             access_token="dapi8fa52bff08521d4a694c07310888d5bf"
+
             cluster_id="0620-095103-6p61kc1w"
 
 # endpoint="api/2.0/jobs/list"
@@ -57,6 +58,14 @@ class DatabricksoauthConnection:
 # endpoint="api/2.0/workspace/list"
 # endpoint="api/2.0/clusters/get"
 # endpoint="api/2.0/commands/execute"
+            details={
+                "url": param["url"],
+                "cluster_id": param["project_id"],
+                "warehouse_id": param['private_key_id'],
+                "access_token":param["refresh_token"]
+                
+            }
+            # print(details)
 
             sql_query='select * from arlo_opexwise.default.sf_ticket_raw_31_may_02_jun limit 1'
             # sql_query='select * from samples.nyctaxi.trips limit 3'
@@ -89,17 +98,43 @@ class DatabricksoauthConnection:
             session.verify = False
 
 
-            response=requests.post(url,headers=headers,data=json.dumps(body))
+            response=requests.post(url,headers=headers,data=json.dumps(body),verify=False)
 # response=requests.get(url,headers=headers,params=payload)
 # response=requests.get(url,headers=headers)
+            # print(response.json().items())
 
             if response.status_code == 200:
-                print("success")
-                print(response.json())
-                print(response.text)
-                print("data fetched")
+                log.info("connection successfull")
+                # log.debug(response.json())
+                # execution_id=response.json().get("statement_id")
+                # print(execution_id)
+                # result_url = f"{databricks}/api/2.0/sql/queries/{execution_id}/results"
+                # result_response=requests.get(result_url,headers=headers,verify=False)
+                # result_data=result_response.json()
+                # log.info("connection successful")
+                execution_id = response.json().get("statement_id")
+                result_url = f"{databricks}/api/2.0/sql/queries/{execution_id}/results"
+                result_response = requests.get(result_url, headers=headers, verify=False)
+                result_data = result_response.json()
+
+                # Extracting column names
+                columns = result_data['schema']['columns']
+                column_names = [column['name'] for column in columns]
+
+                # Extracting column values
+                rows = result_data['data']
+                column_values = []
+                for row in rows:
+                    values = row['cells']
+                    column_values.append(values)
+
+                print("Column Names:", column_names)
+                print("Column Values:", column_values)
+
+                return True, response
             else:
-                print("not connected",response.status_code)    
+                print("Not connected", response.status_code)
+                return False, response 
                         
         except Exception as e:
 
