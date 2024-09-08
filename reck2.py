@@ -1,42 +1,51 @@
-import cv2
-import numpy as np
 import streamlit as st
-import tempfile
-import os
+import streamlit.components.v1 as components
 
-# Function to create a simple video
-def create_test_video():
-    # Create a blank frame (black)
-    frame_width, frame_height = 640, 480
-    fps = 10  # Frames per second
+# Example function to get violence timestamps
+def get_violence_timestamps():
+    return [2.5, 5.0, 7.5]  # Example timestamps in seconds
 
-    # Create a temporary file for the video
-    temp_video_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
-    temp_video_path = temp_video_file.name
-    temp_video_file.close()
+# HTML template for the video player
+def video_player_html(video_url, timestamps):
+    timestamp_marks = ",".join([f"{int(t*100)/100}" for t in timestamps])  # Format timestamps
+    return f"""
+    <video id="videoPlayer" width="640" height="360" controls>
+      <source src="{video_url}" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+    <style>
+        /* Style for the timestamp markers */
+        .videoMarker {{
+            position: absolute;
+            background-color: red;
+            width: 2px;
+            height: 100%;
+        }}
+    </style>
+    <script>
+        const video = document.getElementById('videoPlayer');
+        const timestamps = [{timestamp_marks}];
 
-    # Define codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec for .mp4
-    out = cv2.VideoWriter(temp_video_path, fourcc, fps, (frame_width, frame_height))
+        // Function to add markers on the video timeline
+        function addMarkers() {{
+            const duration = video.duration;
+            const progressBar = video.querySelector('input[type="range"]');
+            timestamps.forEach(function(ts) {{
+                const marker = document.createElement('div');
+                marker.classList.add('videoMarker');
+                marker.style.left = (ts / duration * 100) + '%';
+                document.body.appendChild(marker);
+            }});
+        }}
 
-    for i in range(50):  # Create a video with 50 frames
-        frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)  # Black frame
+        video.addEventListener('loadedmetadata', addMarkers);
+    </script>
+    """
 
-        # Add a moving rectangle
-        cv2.rectangle(frame, (i*10, 100), (i*10+50, 150), (0, 255, 0), -1)  # Green rectangle
-        cv2.putText(frame, f"Frame {i+1}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+# Path to the video file (replace with your own video)
+video_url = "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4"  # Replace with actual URL or file path
+timestamps = get_violence_timestamps()  # Fetch violence timestamps
 
-        out.write(frame)  # Write the frame to the video
-
-    out.release()
-    return temp_video_path
-
-# Test video creation
-test_video_path = create_test_video()
-
-# Display the test video in Streamlit
-if test_video_path and os.path.exists(test_video_path):
-    st.video(test_video_path)
-    os.remove(test_video_path)  # Clean up
-else:
-    st.error("Error: Test video could not be created.")
+# Display the custom video player with markers in Streamlit
+html_code = video_player_html(video_url, timestamps)
+components.html(html_code, height=400)
