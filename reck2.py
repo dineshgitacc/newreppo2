@@ -1,43 +1,52 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# Function to get violence timestamps
-def get_violence_timestamps():
-    return [2.5, 5.0, 7.5]  # Example timestamps in seconds
-
 # Example video file
-video_file = "/path/to/your/video.mp4"  # Replace with your actual video path
+video_url = "https://www.w3schools.com/html/mov_bbb.mp4"  # Replace with your own video URL or local file path
 
-# Use st.video() to serve the video
-st.video(video_file)
+# Example violence timestamps in seconds
+timestamps = [2.5, 5.0, 7.5]  # Replace with your own timestamp values
 
-# Generate timestamp markers with JS
-def video_marker_js(timestamps):
-    return f"""
+# HTML and JavaScript to display video and mark timestamps
+video_html = f"""
+    <video id="videoPlayer" width="640" height="360" controls>
+      <source src="{video_url}" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+    <style>
+      /* Style for the red line markers */
+      .video-marker {{
+        position: absolute;
+        background-color: red;
+        width: 2px;
+        height: 100%;
+        z-index: 10;
+      }}
+      #video-container {{
+        position: relative;
+        width: 640px;
+        height: 360px;
+      }}
+    </style>
+    <div id="video-container"></div>
+    
     <script>
-    const video = document.querySelector('video');
-    const timestamps = [{','.join(map(str, timestamps))}];
+      const video = document.getElementById('videoPlayer');
+      const container = document.getElementById('video-container');
+      const timestamps = {timestamps};
 
-    function addMarkers() {{
+      video.addEventListener('loadedmetadata', function() {{
+        const videoDuration = video.duration;
+
         timestamps.forEach(function(timestamp) {{
-            const marker = document.createElement('div');
-            marker.className = 'marker';
-            marker.style.position = 'absolute';
-            marker.style.left = (timestamp / video.duration * 100) + '%';
-            marker.style.height = '5px';
-            marker.style.width = '2px';
-            marker.style.backgroundColor = 'red';
-            marker.style.top = '0';
-            document.querySelector('.stVideo').appendChild(marker);
+          const marker = document.createElement('div');
+          marker.classList.add('video-marker');
+          marker.style.left = (timestamp / videoDuration * 100) + '%';
+          container.appendChild(marker);
         }});
-    }}
-
-    video.addEventListener('loadedmetadata', addMarkers);
+      }});
     </script>
-    """
+"""
 
-# Example timestamps to mark on video
-timestamps = get_violence_timestamps()
-
-# Embed the JavaScript for video marker in Streamlit
-components.html(video_marker_js(timestamps), height=0)
+# Embed the video player with markers in Streamlit
+components.html(video_html, height=400)
