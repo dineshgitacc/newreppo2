@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video with Violence Timestamps</title>
+    <style>
+        .video-container {
+            position: relative;
+            width: 640px;
+            margin: auto;
+        }
+        .video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: auto;
+            transition: filter 0.3s ease; /* Smooth transition for the blur effect */
+        }
+        .timestamp-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1; /* Ensure timestamps are above video */
+            /* pointer-events: none;  */
+        }
+        .timestamp-mark {
+            position: relative;
+            background: red;
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 15px;
+            display: none;
+            white-space: nowrap;
+            z-index: 10;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="video-container">
+        <video id="video" controls>
+            <source id="videoSource" type="video/mp4"> 
+            <!-- src="http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" -->
+            Your browser does not support the video tag.
+        </video>
+        <div id="timestamps" class="timestamp-overlay"></div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const video = document.getElementById('video');
+            const videoSource = document.getElementById('videoSource');
+            const timestampsContainer = document.getElementById('timestamps');
+
+            // Fetch video info from Flask API
+            fetch('http://127.0.0.1:5000/video-info')
+                .then(response => response.json())
+                .then(data => {
+                    // Set video source
+                    videoSource.src = data.video_url;
+                    console.log(videoSource);
+                    video.load();
+
+                    // Example timestamps from API
+                    const violenceTimestamps = data.timestamps.map(ts => ({
+                        time: ts.start,
+                        end: ts.end
+                    }));
+
+                    function secondsToTime(seconds) {
+                        // Calculate hours, minutes, and seconds
+                        const hours = Math.floor(seconds / 3600);
+                        const minutes = Math.floor((seconds % 3600) / 60);
+                        const remainingSeconds = Math.floor(seconds % 60);
+
+                        // Format to hh:mm:ss with leading zeros if needed
+                        const formattedTime = [
+                            hours.toString().padStart(2, '0'),
+                            minutes.toString().padStart(2, '0'),
+                            remainingSeconds.toString().padStart(2, '0')
+                        ].join(':');
+
+                        return formattedTime;
+                    }
+
+
+                    function convertTimeToSeconds(time) {
+                        const [hours, minutes, seconds] = time.split(':').map(Number);
+                        return hours * 3600 + minutes * 60 + seconds;
+                    }
+
+                    function formatTime(time) {
+                        return time.replace(/:/g, '_');
+                    }
+
+                    // Wait for the video metadata to load before creating timestamp markers
+                    video.addEventListener('loadedmetadata', () => {
+                        // Create timestamp markers
+                        violenceTimestamps.forEach(ts => {
+                            const timestampMark = document.createElement('div');
+                            timestampMark.className = 'timestamp-mark';
+                            timestampMark.innerText = `Violence`;
+                            timestampMark.id = 'timestamp_' + formatTime(ts.time) +'_'+ formatTime(ts.end);
+                            timestampsContainer.appendChild(timestampMark);
+                            console.log(ts);
+                            
+                        });
+                    });
+
+                    // Show markers and blur video when it's near the timestamp
+                    video.addEventListener('timeupdate', () => {
+                        if (video.duration > 0) {
+                            let shouldBlur = false;
+
+                            violenceTimestamps.forEach(ts => {                               
+                                if (video.currentTime >= convertTimeToSeconds(ts.time) && video.currentTime <= convertTimeToSeconds(ts.end)) {
+                                    shouldBlur = true;
+                                    document.querySelectorAll(`#timestamp_${formatTime(ts.time)+'_'+formatTime(ts.end)}`).forEach(mark => {
+                                        mark.style.display = 'block';
+                                        mark.innerText = 'Violence at '+ secondsToTime(video.currentTime);
+                                    });
+                                } else {
+                                    // shouldBlur = false;
+                                    document.querySelectorAll(`#timestamp_${formatTime(ts.time)+'_'+formatTime(ts.end)}`).forEach(mark => {
+                                        mark.style.display = 'none';
+                                    });
+                                }
+                            });
+
+                            video.style.filter = shouldBlur ? 'blur(8px)' : 'none';
+                        }
+                    });
+                })
+                .catch(error => console.error('Error fetching video info:', error));
+        });
+    </script>
+</body>
+</html>

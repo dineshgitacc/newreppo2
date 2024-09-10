@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Video Player</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        #video-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: auto;
+        }
+        #video {
+            width: 100%;
+            display: block;
+        }
+        #playbar {
+            position: absolute;
+            bottom: 2px;
+            left: 0;
+            width: 100%;
+            height: 7px;
+            background-color: #ddd;
+            /* cursor: pointer; */
+        }
+        .timestamp {
+            position: absolute;
+            height: 100%;
+            background-color: rgb(16, 169, 46);
+            opacity: 0.5;
+            z-index: 900;
+        }
+        .controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .controls button {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #progress-container {
+            position: relative;
+            width: 100%;
+            height: 10px;
+            background-color: #888;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #progress-bar {
+            height: 100%;
+            background-color: rgb(244, 239, 239);
+            width: 0;
+            border-radius: 4px;
+        }
+        .playhead {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background-color: white;
+            transform: translateX(-50%);
+            border-radius: 4px;
+        }
+        .hover-tooltip {
+            position: absolute;
+            background-color: #333;
+            color: #fff;
+            padding: 5px;
+            border-radius: 5px;
+            display: none;
+            font-size: 12px;
+        }
+        .controls button:hover, #playbar:hover {
+            opacity: 0.8;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="video-container">
+        <video id="video">
+            <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div id="playbar"></div>
+        <div class="controls">
+            <button id="playPause"><i class="fas fa-play"></i></button>
+            <button id="mute"><i class="fas fa-volume-up"></i></button>
+            <button id="fullscreen"><i class="fas fa-expand"></i></button>
+        </div>
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+            <div id="playhead" class="playhead"></div>
+            <div id="hover-tooltip" class="hover-tooltip"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const video = document.getElementById('video');
+            const playbar = document.getElementById('playbar');
+            const playPauseBtn = document.getElementById('playPause');
+            const muteBtn = document.getElementById('mute');
+            const fullscreenBtn = document.getElementById('fullscreen');
+            const progressBar = document.getElementById('progress-bar');
+            const playhead = document.getElementById('playhead');
+            const hoverTooltip = document.getElementById('hover-tooltip');
+            const progressContainer = document.getElementById('progress-container');
+            let isPlaying = false;
+            let isMuted = false;
+
+            fetch('http://127.0.0.1:5000/video-info')
+                .then(response => response.json())
+                .then(data => {
+                    const duration = video.duration;
+                    data.timestamps.forEach(timestamp => {
+                        const startTime = convertTimeToSeconds(timestamp.start);
+                        const endTime = convertTimeToSeconds(timestamp.end);
+
+                        const startPercent = (startTime / duration) * 100;
+                        const endPercent = (endTime / duration) * 100;
+
+                        const div = document.createElement('div');
+                        div.className = 'timestamp mark';
+                        div.style.left = `${startPercent}%`;
+                        div.style.width = `${endPercent - startPercent}%`;
+
+                        playbar.appendChild(div);
+                    });
+                });
+
+            function convertTimeToSeconds(time) {
+                const [hours = 0, minutes = 0, seconds] = time.split(':').map(Number);
+                return hours * 3600 + minutes * 60 + seconds;
+            }
+
+            function updateProgress() {
+                const value = (video.currentTime / video.duration) * 100;
+                progressBar.style.width = `${value}%`;
+                playhead.style.left = `${value}%`;
+            }
+
+            video.addEventListener('timeupdate', updateProgress);
+
+            playPauseBtn.addEventListener('click', function() {
+                if (isPlaying) {
+                    video.pause();
+                    playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                } else {
+                    video.play();
+                    playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                }
+                isPlaying = !isPlaying;
+            });
+
+            muteBtn.addEventListener('click', function() {
+                if (isMuted) {
+                    video.muted = false;
+                    muteBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                } else {
+                    video.muted = true;
+                    muteBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+                }
+                isMuted = !isMuted;
+            });
+
+            fullscreenBtn.addEventListener('click', function() {
+                if (video.requestFullscreen) {
+                    video.requestFullscreen();
+                } else if (video.mozRequestFullScreen) { // Firefox
+                    video.mozRequestFullScreen();
+                } else if (video.webkitRequestFullscreen) { // Chrome, Safari & Opera
+                    video.webkitRequestFullscreen();
+                } else if (video.msRequestFullscreen) { // IE/Edge
+                    video.msRequestFullscreen();
+                }
+            });
+
+            progressContainer.addEventListener('click', function(e) {
+                const rect = progressContainer.getBoundingClientRect();
+                const offsetX = e.clientX - rect.left;
+                const width = progressContainer.offsetWidth;
+                const percentage = (offsetX / width) * 100;
+                video.currentTime = (percentage / 100) * video.duration;
+            });
+
+            progressContainer.addEventListener('mousemove', function(e) {
+                const rect = progressContainer.getBoundingClientRect();
+                const offsetX = e.clientX - rect.left;
+                const width = progressContainer.offsetWidth;
+                const percentage = (offsetX / width) * 100;
+                const time = (percentage / 100) * video.duration;
+                const formattedTime = formatTime(time);
+
+                hoverTooltip.textContent = formattedTime;
+                hoverTooltip.style.left = `${percentage}%`;
+                hoverTooltip.style.display = 'block';
+            });
+
+            progressContainer.addEventListener('mouseout', function() {
+                hoverTooltip.style.display = 'none';
+            });
+
+            function formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                seconds = Math.floor(seconds % 60);
+                return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            }
+        });
+    </script>
+</body>
+</html>
